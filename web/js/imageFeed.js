@@ -310,7 +310,6 @@ app.registerExtension({
 					}
 					showButton.style.display = "none";
 				} else {
-					showMenuButton.element.style.display = "unset";
 					showButton.style.display = visible ? "none" : "unset";
 					imageFeed.className = `pysssss-image-feed pysssss-image-feed--${value}`;
 					updateMenuParent(value);
