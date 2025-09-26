@@ -9,6 +9,16 @@ app.registerExtension({
 	name: "pysssss.NodeFinder",
 	setup() {
 		let followExecution = false;
+		let lastExecutingNodeId = null;
+		let clearTimer = null;
+
+		const setLastExecuting = (id) => {
+			if (clearTimer) {
+				clearTimeout(clearTimer);
+				clearTimer = null;
+			}
+			lastExecutingNodeId = id ?? null;
+		};
 
 		const centerNode = (id) => {
 			if (!followExecution || !id) return;
@@ -17,7 +27,22 @@ app.registerExtension({
 			app.canvas.centerOnNode(node);
 		};
 
-		api.addEventListener("executing", ({ detail }) => centerNode(detail));
+		api.addEventListener("executing", ({ detail }) => {
+			const id =
+				detail && typeof detail === "object"
+					? (detail.display_node ?? detail.node ?? detail?.data?.display_node ?? detail?.data?.node ?? null)
+					: (detail ?? null);
+			setLastExecuting(id);
+			if (id) centerNode(id);
+		});
+
+		api.addEventListener("executed", ({ detail }) => {
+			if (clearTimer) clearTimeout(clearTimer);
+			clearTimer = setTimeout(() => {
+				lastExecutingNodeId = null;
+				clearTimer = null;
+			}, 300);
+		});
 
 		// Add canvas menu options
 		const orig = LGraphCanvas.prototype.getCanvasMenuOptions;
@@ -27,15 +52,15 @@ app.registerExtension({
 				content: followExecution ? "Stop following execution" : "Follow execution",
 				callback: () => {
 					if ((followExecution = !followExecution)) {
-						centerNode(app.runningNodeId);
+						centerNode(lastExecutingNodeId);
 					}
 				},
 			});
-			if (app.runningNodeId) {
+			if (lastExecutingNodeId) {
 				options.push({
 					content: "Show executing node",
 					callback: () => {
-						const node = app.graph.getNodeById(app.runningNodeId);
+						const node = app.graph.getNodeById(lastExecutingNodeId);
 						if (!node) return;
 						app.canvas.centerOnNode(node);
 					},
@@ -62,14 +87,10 @@ app.registerExtension({
 							has_submenu: true,
 							submenu: {
 								options: types[t]
-									.sort((a, b) => {
-										return a.pos[0] - b.pos[0];
-									})
+									.sort((a, b) => a.pos[0] - b.pos[0])
 									.map((n) => ({
 										content: `${n.getTitle()} - #${n.id} (${n.pos[0]}, ${n.pos[1]})`,
-										callback: () => {
-											app.canvas.centerOnNode(n);
-										},
+										callback: () => app.canvas.centerOnNode(n),
 									})),
 							},
 						})),
