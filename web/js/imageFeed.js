@@ -389,10 +389,48 @@ Recommended: "enabled (max performance)" uness images are erroneously deduplicat
 			type: "boolean",
 		});
 
+		const persistFeed = app.ui.settings.addSetting({
+			id: "pysssss.ImageFeed.PersistFeed",
+			name: "🐍 Restore Image Feed after page reload",
+			defaultValue: true,
+			type: "boolean",
+		});
+
+		const storedImagesKey = "pysssss.ImageFeed.StoredImages";
+
+		function saveImagesToStorage() {
+			if (!persistFeed.value) return;
+			const images = [...imageList.children].map(div => {
+				const href = div.querySelector('a').href;
+				const url = new URL(href, window.location.origin);
+				const timestamp = parseInt(url.searchParams.get('t')) || 0;
+				return { href, timestamp };
+			});
+			localStorage.setItem(storedImagesKey, JSON.stringify(images));
+		}
+
+		function loadImagesFromStorage() {
+			if (!persistFeed.value) return;
+			const stored = localStorage.getItem(storedImagesKey);
+			if (stored) {
+				try {
+					let images = JSON.parse(stored);
+					// Sort by timestamp
+					images.sort((a, b) => a.timestamp - b.timestamp);
+					images.forEach(({ href }) => addImageToFeed(href));
+				} catch (e) {
+					console.warn("Failed to load stored images:", e);
+				}
+			}
+		}
+
 		const clearButton = $el("button.pysssss-image-feed-btn.clear-btn", {
 			textContent: "Clear",
 			onclick: () => {
 				imageList.replaceChildren();
+				if (persistFeed.value) {
+					localStorage.removeItem(storedImagesKey);
+				}
 				window.dispatchEvent(new Event("resize"));
 			},
 		});
@@ -448,6 +486,7 @@ Recommended: "enabled (max performance)" uness images are erroneously deduplicat
 			);
 			// If lightbox is open, update it with new image
 			lightbox.updateWithNewImage(href, feedDirection.value);
+			saveImagesToStorage();
 		}
 
 		imageFeed.append(
@@ -513,6 +552,8 @@ Recommended: "enabled (max performance)" uness images are erroneously deduplicat
 			]),
 			imageList
 		);
+
+		loadImagesFromStorage();
 		showButton.onclick = () => {
 			imageFeed.style.display = "flex";
 			showButton.style.display = "none";
