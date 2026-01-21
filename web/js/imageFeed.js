@@ -427,11 +427,13 @@ Recommended: "enabled (max performance)" uness images are erroneously deduplicat
 		const clearButton = $el("button.pysssss-image-feed-btn.clear-btn", {
 			textContent: "Clear",
 			onclick: () => {
-				imageList.replaceChildren();
-				if (persistFeed.value) {
-					localStorage.removeItem(storedImagesKey);
+				if (confirm("Are you sure you want to clear the feed?")) {
+					imageList.replaceChildren();
+					if (persistFeed.value) {
+						localStorage.removeItem(storedImagesKey);
+					}
+					window.dispatchEvent(new Event("resize"));
 				}
-				window.dispatchEvent(new Event("resize"));
 			},
 		});
 
